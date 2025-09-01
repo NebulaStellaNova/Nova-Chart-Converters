@@ -15,7 +15,9 @@ import flixel.tweens.FlxEase;
 import flixel.tweens.FlxTween;
 import flixel.util.FlxTimer;
 import haxe.ui.containers.dialogs.Dialog;
+import haxe.ui.components.Label;
 import haxe.ui.components.Link;
+import haxe.ui.components.Spacer;
 import haxe.ui.containers.Card;
 import haxe.ui.RuntimeComponentBuilder;
 import funkin.ui.debug.charting.handlers.ChartEditorDialogHandler;
@@ -33,9 +35,12 @@ import funkin.data.song.SongTimeChange;
 import funkin.data.song.SongNoteDataRaw;
 import funkin.data.song.SongEventDataRaw;
 
+import haxe.ui.containers.Box;
+import haxe.ui.styles.Style;
+
 import Reflect;
 
-class ChartEditor extends Module {
+class CodenameEnginePorter extends Module {
 
 	var songMeta:SongMetadata;
 	var songChart:SongChartData;
@@ -44,7 +49,7 @@ class ChartEditor extends Module {
 	var notificationManager = new NotificationManager();
 
 	public function new() {
-		super('ChartEditor');
+		super('CodenameEnginePorter');
 	}
 
 	override function onCreate(event) {
@@ -72,6 +77,9 @@ class ChartEditor extends Module {
 		for (i in state.members) {
 			if (Std.isOfType(i, Dialog)) {
 				if (i.findComponent("splashImportChartLegacy") != null && i.findComponent("splashImportChartLegacy").parentComponent.findComponent("splashImportChartCodename", Link) == null) {
+					var label = new Label();
+					label.text = "Nova Converters";
+					var spacer = new Spacer();
 					var cneLink = new Link();
 					cneLink.text = "Codename Engine";
 					cneLink.id = "splashImportChartCodename";
@@ -106,6 +114,13 @@ class ChartEditor extends Module {
 						}
 						state.add(daDialog);
 					}
+					i.findComponent("splashImportChartLegacy").parentComponent.addComponent(spacer);
+					i.findComponent("splashImportChartLegacy").parentComponent.addComponent(spacer);
+					i.findComponent("splashImportChartLegacy").parentComponent.addComponent(label);
+
+					var line = RuntimeComponentBuilder.build(Paths.ui("line"));
+					i.findComponent("splashImportChartLegacy").parentComponent.addComponent(line);
+
 					i.findComponent("splashImportChartLegacy").parentComponent.addComponent(cneLink);
 				}
 			}

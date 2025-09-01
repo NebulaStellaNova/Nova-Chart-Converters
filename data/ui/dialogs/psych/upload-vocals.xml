@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<dialog id="chartDialog" width="600" height="400" title="From Codename Engine - Upload Vocals">
+	<vbox width="100%" height="100%">
+		<hbox width="100%" height="100%">
+			<box width="50%" id="opponentBox" height="100%" styleName="upload-bg" style="border: 2px dotted #DDDDDD; padding: 5px;">
+				<label id="theLabel" width="100%" style="font-size: 24px" verticalAlign="center" horizontalAlign="center" textAlign="center" text="Click here to browse for a Vocal Track file for $opponent (.ogg)" />
+			</box>
+			<box width="50%" id="playerBox" height="100%" styleName="upload-bg" style="border: 2px dotted #DDDDDD; padding: 5px;">
+				<label id="theLabel" width="100%" style="font-size: 24px" verticalAlign="center" horizontalAlign="center" textAlign="center" text="Click here to browse for a Vocal Track file for $player (.ogg)" />
+			</box>
+		</hbox>
+		<hbox>
+			<button text="Cancel" id="dialogCancel" />
+			<button text="Skip (No Vocals)" id="dialogSkip"/>
+			<spacer width="200%" />
+		</hbox>
+	</vbox>
+</dialog>

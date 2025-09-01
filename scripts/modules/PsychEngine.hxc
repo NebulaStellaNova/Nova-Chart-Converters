@@ -1,0 +1,520 @@
+import funkin.modding.module.Module;
+import funkin.util.Constants;
+import flixel.FlxG;
+import flixel.FlxSprite;
+import funkin.ui.debug.charting.ChartEditorState;
+import funkin.util.ReflectUtil;
+import funkin.PlayerSettings;
+import funkin.graphics.adobeanimate.FlxAtlasSprite;
+import funkin.graphics.FunkinSprite;
+import funkin.Conductor;
+import funkin.util.FileUtil;
+import funkin.modding.PolymodHandler;
+import flixel.text.FlxText;
+import flixel.tweens.FlxEase;
+import flixel.tweens.FlxTween;
+import flixel.util.FlxTimer;
+import haxe.ui.containers.dialogs.Dialog;
+import haxe.ui.components.Link;
+import haxe.ui.containers.Card;
+import haxe.ui.RuntimeComponentBuilder;
+import funkin.ui.debug.charting.handlers.ChartEditorDialogHandler;
+import funkin.input.Cursor;
+import funkin.input.CursorMode;
+import haxe.Json;
+import StringTools;
+import haxe.ui.notifications.NotificationManager;
+import haxe.ui.notifications.NotificationType;
+import funkin.modding.PolymodHandler;
+
+import funkin.data.song.SongMetadata;
+import funkin.data.song.SongChartData;
+import funkin.data.song.SongTimeChange;
+import funkin.data.song.SongNoteDataRaw;
+import funkin.data.song.SongEventDataRaw;
+
+import Reflect;
+
+class PsychEnginePorter extends Module {
+
+	var songMeta:SongMetadata;
+	var songChart:SongChartData;
+	var songID:String = "";
+
+	var notificationManager = new NotificationManager();
+
+	public function new() {
+		super('PsychEnginePorter');
+	}
+
+	override function onCreate(event) {
+		super.onCreate(event);
+	}
+
+	override function onStateChangeEnd(event) {
+		super.onStateChangeEnd(event);
+
+	}
+
+	override function onSubStateCloseEnd(event) {
+		super.onSubStateCloseEnd(event);
+	}
+
+	var added = false;
+
+	override function onUpdate(event:UpdateScriptEvent) {
+		super.onUpdate(event);
+		
+		if (!Std.isOfType(FlxG.state, ChartEditorState)) return;
+
+		var state:ChartEditorState = FlxG.state;
+
+		for (i in state.members) {
+			if (Std.isOfType(i, Dialog)) {
+				if (i.findComponent("splashImportChartLegacy") != null && i.findComponent("splashImportChartLegacy").parentComponent.findComponent("splashImportChartPsych", Link) == null) {
+					var link = new Link();
+					link.text = "Psych Engine (Pre 1.0.0)";
+					link.id = "splashImportChartPsych";
+					link.tooltip = "Added by Nova Chart Converters.";
+					link.onClick = ()->{
+						//i.findComponent("splashImportChartLegacy").rootComponent.close();
+						difficulties = ["easy", "normal", "hard"];
+						openDifficultyDialogue();
+						/* var daDialog = RuntimeComponentBuilder.build(Paths.ui("dialogs/psych/upload-meta"));
+						daDialog.zIndex = 1000;
+						daDialog.showDialog(true);
+						daDialog.destroyOnClose = true;
+
+						daDialog.findComponent("chartBox").onClick = function(_event) {
+							FileUtil.browseForTextFile('Open Chart', [FileUtil.FILE_FILTER_JSON], (data)->{ daDialog.hide(); onSelectPsychMeta(data); }, ()->{});
+						}
+
+						daDialog.findComponent("chartBox").onMouseOver = function(_event) {
+							daDialog.findComponent("chartBox").alpha = 1;
+      						Cursor.cursorMode = CursorMode.Pointer;
+						}
+
+						daDialog.findComponent("chartBox").onMouseOut = function(_event) {
+							daDialog.findComponent("chartBox").alpha = 0.8;
+      						Cursor.cursorMode = CursorMode.Default;
+						}
+						daDialog.findComponent("chartBox").alpha = 0.8;
+						//FlxG.state.isHaxeUIDialogOpen = true;
+						daDialog.onDialogClosed = function(event:UIEvent) {
+							//FlxG.state.isHaxeUIDialogOpen = false;
+						};
+						daDialog.findComponent("dialogCancel").onClick = ()->{
+							daDialog.hide();
+						}
+						state.add(daDialog); */
+					}
+					i.findComponent("splashImportChartLegacy").parentComponent.addComponent(link);
+				}
+			}
+		}
+		//trace(state.activeToolboxes);
+	}
+
+	var currentDifficulty = 0;
+	var difficulties = [];
+
+	function openDifficultyDialogue() {
+		if (currentDifficulty > difficulties.length - 1) {
+			var daDialog = RuntimeComponentBuilder.build(Paths.ui("dialogs/psych/upload-inst"));
+			//daDialog.findComponent('theLabel').text = StringTools.replace(daDialog.findComponent('theLabel').text, "$difficulty", difficulties[currentDifficulty].toUpperCase());
+			daDialog.zIndex = 1000;
+			daDialog.showDialog(true);
+			daDialog.destroyOnClose = true;
+
+			daDialog.findComponent("instBox").onClick = function(_event) {
+				FileUtil.browseForBinaryFile('Open Instrumental', [{
+					extension: 'ogg',
+					label: 'Friday Night Funkin\' Instrumental',
+				}], (data)->{ daDialog.hide(); onSelectInstrumental(data); }, ()->{});
+			}
+
+			daDialog.findComponent("dialogSkip").onClick = ()->{
+				daDialog.hide();
+				onSelectInstrumental({
+					bytes: "none"
+				});
+			}
+
+			daDialog.findComponent("instBox").onMouseOver = function(_event) {
+			daDialog.findComponent("instBox").alpha = 1;
+				Cursor.cursorMode = CursorMode.Pointer;
+			}
+
+			daDialog.findComponent("instBox").onMouseOut = function(_event) {
+				daDialog.findComponent("instBox").alpha = 0.8;
+				Cursor.cursorMode = CursorMode.Default;
+			}
+			daDialog.findComponent("instBox").alpha = 0.8;
+			return;
+		}
+		var daDialog = RuntimeComponentBuilder.build(Paths.ui("dialogs/psych/upload-chart"));
+		daDialog.findComponent('theLabel').text = StringTools.replace(daDialog.findComponent('theLabel').text, "$difficulty", difficulties[currentDifficulty].toUpperCase());
+		daDialog.zIndex = 1000;
+		daDialog.showDialog(true);
+		daDialog.destroyOnClose = true;
+
+		daDialog.findComponent("chartBox").onClick = function(_event) {
+			FileUtil.browseForTextFile('Open Chart', [FileUtil.FILE_FILTER_JSON], (data)->{ 
+				if (Json.parse(data.text).codenameChart || Json.parse(data.text).isCodenameChart) {
+					daDialog.hide(); 
+					onSelectPsychDifficulty(data); 
+				} else {
+					newNotification("Error!", "Not a valid Codename Engine chart!", NotificationType.Error);
+				}
+			}, ()->{});
+		}
+
+		daDialog.findComponent("chartBox").onMouseOver = function(_event) {
+			daDialog.findComponent("chartBox").alpha = 1;
+			Cursor.cursorMode = CursorMode.Pointer;
+		}
+
+		daDialog.findComponent("chartBox").onMouseOut = function(_event) {
+			daDialog.findComponent("chartBox").alpha = 0.8;
+			Cursor.cursorMode = CursorMode.Default;
+		}
+		daDialog.findComponent("chartBox").alpha = 0.8;
+		//FlxG.state.isHaxeUIDialogOpen = true;
+		daDialog.onDialogClosed = function(event:UIEvent) {
+			//FlxG.state.isHaxeUIDialogOpen = false;
+		};
+		daDialog.findComponent("dialogCancel").onClick = ()->{
+			daDialog.hide();
+		}
+		FlxG.state.add(daDialog);
+	}
+
+	function onSelectPsychMeta(data) {
+		var parsed = Json.parse(data.text);
+		currentDifficulty = 0;
+		var index = 0;
+		for (i in parsed.difficulties) {
+			parsed.difficulties[index] = i.toLowerCase();
+			
+			index++;
+		}
+		difficulties = parsed.difficulties;
+
+		songID = parsed.name;
+
+		// Handle MetaData
+		songMeta = new SongMetadata();
+		songMeta.playData.difficulties = parsed.difficulties;
+		songMeta.playData.ratings = [
+			"init" => 0
+		];
+		songMeta.playData.ratings.remove("init");
+		for (i in songMeta.playData.difficulties)
+			songMeta.playData.ratings.set(i, 0);
+
+		if (parsed.customValues != null) {
+			if (parsed.customValues.composer != null)
+				songMeta.artist = parsed.customValues.composer;
+			if (parsed.customValues.charter != null)
+				songMeta.charter = parsed.customValues.charter;
+		}
+
+		songMeta.artist = songMeta.artist == null ? "Unknown" : songMeta.artist;
+		songMeta.charter = songMeta.charter == null ? "Unknown" : songMeta.charter;
+
+		songMeta.songName = parsed.displayName;
+		songMeta.timeChanges = [new SongTimeChange(0, parsed.bpm, parsed.beatsPerMeasure, parsed.stepsPerBeat)];
+
+		var scrollSpeeds = [
+			"default" => 3.0
+		];
+
+		var notes = [
+			"init" => []
+		];
+		notes.remove("init");
+
+		for (i in songMeta.playData.difficulties) {
+			scrollSpeeds.set(i, 0.0);
+			notes.set(i, []);
+		}
+
+
+		songChart = new SongChartData(scrollSpeeds, [], notes);
+
+		openDifficultyDialogue();
+	}
+
+	var chartString = "";
+
+	function onSelectPsychDifficulty(data) {
+		// Handle Chart
+		var parsed = Json.parse(data.text);
+		/* var noteArray = [];
+		for (i in 0...3) {
+			var pos = 0;
+			switch (parsed.strumLines[i].position) {
+				case "dad":
+					pos = 1;
+					songMeta.playData.characters.opponent = parsed.strumLines[i].characters[0];
+				case "boyfriend":
+					pos = 0;
+					songMeta.playData.characters.player = parsed.strumLines[i].characters[0];
+				case "girlfriend":
+					pos = 2;
+					songMeta.playData.characters.girlfriend = parsed.strumLines[i].characters[0];
+			}
+
+			var types = [
+				null
+			];
+			for (type in parsed.noteTypes) {
+				types.push(type);
+			}
+
+			for (note in parsed.strumLines[i].notes) {
+				var theNote = new SongNoteDataRaw(note.time, note.id + (4 * pos), note.sLen, types[note.type]);
+				trace(theNote);
+				noteArray.push(theNote);
+			}
+
+			//songChart.notes.easy = noteArray;
+		}
+
+		
+		if (currentDifficulty == 0) {
+			var events = [];
+			
+			if (parsed.events != null) {
+				for (event in parsed.events) {
+					var daEvent = new SongEventDataRaw(event.time, aliasEvent(event.name), eventParams(event.name, event.params));
+					events.push(daEvent);
+				}
+			}
+
+			songChart.events = events;
+			songMeta.playData.stage = parsed.stage != null ? parsed.stage : "mainStage";
+		}
+		
+		songChart.notes.set(songMeta.playData.difficulties[currentDifficulty], noteArray);
+		songChart.scrollSpeed.set(songMeta.playData.difficulties[currentDifficulty], parsed.scrollSpeed); */
+
+		chartString = songChart.serialize();
+
+		currentDifficulty++;
+		openDifficultyDialogue();
+	}
+
+	var playerVocalBytes = null;
+	var opponentVocalBytes = null;
+	var instrumentalBytes = null;
+
+	function onSelectInstrumental(data) {
+		// Handle Instrumental
+		if (data.bytes != "none") {
+			instrumentalBytes = data.bytes;
+		}
+
+		var state:ChartEditorState = FlxG.state;
+
+		var daDialog = RuntimeComponentBuilder.build(Paths.ui("dialogs/psych/upload-vocals"));//meta"));
+		daDialog.zIndex = 1000;
+		daDialog.showDialog(true);
+		daDialog.destroyOnClose = true;
+
+		daDialog.findComponent("playerBox").findComponent("theLabel").text = StringTools.replace(daDialog.findComponent("playerBox").findComponent("theLabel").text, "$player", songMeta.playData.characters.player);
+		daDialog.findComponent("opponentBox").findComponent("theLabel").text = StringTools.replace(daDialog.findComponent("opponentBox").findComponent("theLabel").text, "$opponent", songMeta.playData.characters.opponent);
+
+		daDialog.findComponent("playerBox").onClick = function(_event) {
+			FileUtil.browseForBinaryFile('Open Instrumental', [{
+					extension: 'ogg',
+					label: 'Friday Night Funkin\' Instrumental',
+				}], (data)->{ /* daDialog.hide(); */ onSelectVocal(data, "player", daDialog); }, ()->{});
+		}
+
+		daDialog.findComponent("opponentBox").onClick = function(_event) {
+			FileUtil.browseForBinaryFile('Open Vocal Track', [{
+					extension: 'ogg',
+					label: 'Friday Night Funkin\' Vocal Track',
+				}], (data)->{ /* daDialog.hide(); */ onSelectVocal(data, "opponent", daDialog); }, ()->{});
+		}
+
+		daDialog.findComponent("playerBox").onMouseOver = function(_event) {
+			daDialog.findComponent("playerBox").alpha = 1;
+			Cursor.cursorMode = CursorMode.Pointer;
+		}
+
+		daDialog.findComponent("opponentBox").onMouseOver = function(_event) {
+			daDialog.findComponent("opponentBox").alpha = 1;
+			Cursor.cursorMode = CursorMode.Pointer;
+		}
+
+		daDialog.findComponent("playerBox").onMouseOut = function(_event) {
+			daDialog.findComponent("playerBox").alpha = 0.8;
+			Cursor.cursorMode = CursorMode.Default;
+		}
+
+		daDialog.findComponent("opponentBox").onMouseOut = function(_event) {
+			daDialog.findComponent("opponentBox").alpha = 0.8;
+			Cursor.cursorMode = CursorMode.Default;
+		}
+
+		daDialog.findComponent("playerBox").alpha = 0.8;
+		daDialog.findComponent("opponentBox").alpha = 0.8;
+		//FlxG.state.isHaxeUIDialogOpen = true;
+		daDialog.onDialogClosed = function(event:UIEvent) {
+			//FlxG.state.isHaxeUIDialogOpen = false;
+		};
+		daDialog.findComponent("dialogCancel").onClick = ()->{
+			daDialog.hide();
+		}
+		daDialog.findComponent("dialogSkip").onClick = ()->{
+			daDialog.hide();
+			chooseMod();
+			//processData();
+		}
+		state.add(daDialog);
+	}
+
+	function onSelectVocal(data, type, parentComponent) {
+		if (!StringTools.endsWith(data.name, ".ogg")) {
+			newNotification("Invalid File Type!", "Invalid file type \"." + data.name.split(".").pop() + "\" please select a \".ogg\" file.", NotificationType.Error);
+			return;
+		}
+		parentComponent.findComponent("dialogSkip").text = "Continue";
+		switch (type) {
+			case "player":
+				playerVocalBytes = data.bytes;
+				parentComponent.findComponent("playerBox").findComponent("theLabel").text = "Selected \"" + data.name + "\"";
+			case "opponent":
+				parentComponent.findComponent("opponentBox").findComponent("theLabel").text = "Selected \"" + data.name + "\"";
+				opponentVocalBytes = data.bytes;
+		}
+	}
+
+	function processData(folder:String) {
+		for (i in FlxG.state.members) {
+			if (Std.isOfType(i, Dialog)) {
+				i.hide();
+			}
+		}
+
+		var jsonPath = "mods/" + folder + "/data/songs/" + songID + "/" + songID + "-";
+		var oggPath = "mods/" + folder + "/songs/" + songID + "/";
+
+		if (instrumentalBytes != null) {
+			FileUtil.writeBytesToPath(oggPath + "Inst.ogg", instrumentalBytes);
+		}
+
+		if (opponentVocalBytes == null) {
+			songMeta.playData.characters.opponentVocals = [];
+		} else {
+			songMeta.playData.characters.opponentVocals = [ songMeta.playData.characters.opponent ];
+			FileUtil.writeBytesToPath(oggPath + "Voices-" + songMeta.playData.characters.opponent + ".ogg", opponentVocalBytes);
+		}
+		if (playerVocalBytes == null) {
+			songMeta.playData.characters.playerVocals = [];
+		} else {
+			songMeta.playData.characters.playerVocals = [ songMeta.playData.characters.player ];
+			FileUtil.writeBytesToPath(oggPath + "Voices-" + songMeta.playData.characters.player + ".ogg", playerVocalBytes);
+		}
+
+		var songMetaString = songMeta.serialize();
+		//var songChartString = songChart.serialize();
+
+		FileUtil.writeStringToPath(jsonPath + "chart.json", chartString);
+		FileUtil.writeStringToPath(jsonPath + "metadata.json", songMetaString);
+		
+
+		return true;
+	}
+
+	function onBeatHit(event) {
+		super.onBeatHit(event);
+	}
+
+	function newNotification(title:String, body:String, ?type, ?expiryMs, ?actions) {
+        notificationManager.addNotification({
+            title: title,
+            body: body,
+            type: type ?? NotificationType.Default,
+            expiryMs: expiryMs ?? null,
+            actions: actions ?? []
+        });
+    }
+
+	var dropDown;
+
+	function chooseMod() {
+		var daDialog = RuntimeComponentBuilder.build(Paths.ui("dialogs/psych/choose-mod"));
+		daDialog.zIndex = 1000;
+		daDialog.showDialog(true);
+		daDialog.destroyOnClose = true;
+
+		daDialog.findComponent("dialogContinue").onClick = ()->{
+			newNotification("Processing Chart.", "Processing Chart, Please Wait.", NotificationType.Info);
+			for (i in PolymodHandler.getAllMods()) {
+				if (i.title + " (" + i.id + ")" == dropDown.text) {
+					var success = processData(i.id);
+					if (success) {
+						newNotification("Chart Converted!!", "Your chart has converted, please Hot Reload or Restart the game to access the chart in-game.", NotificationType.Success);
+					} else {
+						newNotification("Failed to convert chart.", "Something Went Wrong!", NotificationType.Error);
+					}
+				}
+			}
+			daDialog.hide();
+		}
+
+		for (i in PolymodHandler.getAllMods()) {
+			daDialog.findComponent("modFolderList").dataSource.add({ text: i.title + " (" + i.id + ")" });
+            /* if (i.title == editorTitle) {
+                editorFolder = i.id;
+            } */
+        }
+
+		//FlxG.state.isHaxeUIDialogOpen = true;
+		daDialog.onDialogClosed = function(event:UIEvent) {
+			//FlxG.state.isHaxeUIDialogOpen = false;
+		};
+		/* daDialog.findComponent("dialogCancel").onClick = ()->{
+			daDialog.hide();
+		} */
+		FlxG.state.add(daDialog);
+		dropDown = daDialog.findComponent("modFolderList");
+	}
+
+	function aliasEvent(eventName:String) {
+		var aliases = [
+			"Camera Movement" => "FocusCamera",
+			"Play Animation" => "PlayAnimation",
+			"Change Character" => "ChangeCharacter",
+			"HScript Call" => "HScriptCall"
+		];
+		for (i in aliases.keys()) {
+			eventName = StringTools.replace(eventName, i, aliases.get(i));
+		}
+		return eventName;
+	}
+
+	function eventParams(eventName:String, params:Array) {
+		return [
+			"Camera Movement" => {
+					char: params[0] == 0 ? 1 : params[0] == 1 ? 0 : params[0]
+			},
+			"Change Character" => {
+				character: ["dad", "bf", "gf"][params[0]],
+				newchar: params[1]
+			},
+			"Play Animation" => {
+				target: ["dad", "bf", "gf"][params[0]],
+				anim: params[1],
+				force: params[2]+'' == "true"
+			},
+			"HScript Call" => {
+				call: params[0],
+				params: params[1]
+			}
+		].get(eventName);
+	}
+}
