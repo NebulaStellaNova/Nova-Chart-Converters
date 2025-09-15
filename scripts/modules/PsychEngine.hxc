@@ -76,6 +76,7 @@ class PsychEnginePorter extends Module {
 					link.text = "Psych Engine (Pre 1.0.0)";
 					link.id = "splashImportChartPsych";
 					link.tooltip = "Added by Nova Chart Converters.";
+					link.disabled = true;
 					link.onClick = ()->{
 						//i.findComponent("splashImportChartLegacy").rootComponent.close();
 						difficulties = ["easy", "normal", "hard"];
