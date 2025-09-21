@@ -435,8 +435,8 @@ class CodenameEnginePorter extends Module {
 		var songMetaString = songMeta.serialize();
 		//var songChartString = songChart.serialize();
 
-		FileUtil.writeStringToPath(jsonPath + "chart.json", chartString);
-		FileUtil.writeStringToPath(jsonPath + "metadata.json", songMetaString);
+		FileUtil.writeStringToPath(jsonPath + "chart.json", Json.stringify(Json.parse(chartString), null, "\t"));
+		FileUtil.writeStringToPath(jsonPath + "metadata.json", Json.stringify(Json.parse(songMetaString), null, "\t"));
 		
 
 		return true;
@@ -511,7 +511,7 @@ class CodenameEnginePorter extends Module {
 	}
 
 	function eventParams(eventName:String, params:Array) {
-		return [
+		var params2 = [
 			"Camera Movement" => {
 					char: params[0] == 0 ? 1 : params[0] == 1 ? 0 : params[0]
 			},
@@ -529,5 +529,9 @@ class CodenameEnginePorter extends Module {
 				params: params[1]
 			}
 		].get(eventName);
+		if (params2 == null) {
+			params2 = params;
+		}
+		return params2;
 	}
 }
