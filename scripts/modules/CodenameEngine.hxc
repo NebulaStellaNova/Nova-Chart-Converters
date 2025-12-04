@@ -217,6 +217,7 @@ class CodenameEnginePorter extends Module {
 
 		if (songID == null) {
 			var pathSplit = data.fullPath.split("\\");
+			pathSplit.pop();
 			songID = pathSplit.pop();
 		}
 
