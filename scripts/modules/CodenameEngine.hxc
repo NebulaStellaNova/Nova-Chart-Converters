@@ -215,6 +215,11 @@ class CodenameEnginePorter extends Module {
 
 		songID = parsed.name;
 
+		if (songID == null) {
+			var pathSplit = data.fullPath.split("\\");
+			songID = pathSplit.pop();
+		}
+
 		// Handle MetaData
 		songMeta = new SongMetadata();
 		songMeta.playData.difficulties = parsed.difficulties;
