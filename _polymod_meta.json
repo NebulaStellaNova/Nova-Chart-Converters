@@ -1,7 +1,7 @@
 {
   "music": "freeplayRandom",
-  "title": "Mod Title",
-  "description": "Mod description",
+  "title": "Nova's Chart Converters",
+  "description": "Adds the ability to convert Codename Engine charts to V-Slice.",
   "contributors": [
       {
         "name": "Nebula S. Nova",
