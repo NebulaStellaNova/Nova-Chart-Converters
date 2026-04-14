@@ -11,7 +11,7 @@
         "url": "https://www.youtube.com/@ChinosModded"
       }
   ],
-  "api_version": "0.6.4",
-  "mod_version": "1.0.0",
+  "api_version": "0.8.0",
+  "mod_version": "1.0.1",
   "license": "Apache-2.0"
 }

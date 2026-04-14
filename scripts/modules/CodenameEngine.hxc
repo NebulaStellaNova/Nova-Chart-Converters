@@ -15,7 +15,9 @@ import flixel.tweens.FlxEase;
 import flixel.tweens.FlxTween;
 import flixel.util.FlxTimer;
 import haxe.ui.containers.dialogs.Dialog;
+import haxe.ui.components.Label;
 import haxe.ui.components.Link;
+import haxe.ui.components.Spacer;
 import haxe.ui.containers.Card;
 import haxe.ui.RuntimeComponentBuilder;
 import funkin.ui.debug.charting.handlers.ChartEditorDialogHandler;
@@ -33,9 +35,12 @@ import funkin.data.song.SongTimeChange;
 import funkin.data.song.SongNoteDataRaw;
 import funkin.data.song.SongEventDataRaw;
 
+import haxe.ui.containers.Box;
+import haxe.ui.styles.Style;
+
 import Reflect;
 
-class ChartEditor extends Module {
+class CodenameEnginePorter extends Module {
 
 	var songMeta:SongMetadata;
 	var songChart:SongChartData;
@@ -44,7 +49,7 @@ class ChartEditor extends Module {
 	var notificationManager = new NotificationManager();
 
 	public function new() {
-		super('ChartEditor');
+		super('CodenameEnginePorter');
 	}
 
 	override function onCreate(event) {
@@ -72,6 +77,9 @@ class ChartEditor extends Module {
 		for (i in state.members) {
 			if (Std.isOfType(i, Dialog)) {
 				if (i.findComponent("splashImportChartLegacy") != null && i.findComponent("splashImportChartLegacy").parentComponent.findComponent("splashImportChartCodename", Link) == null) {
+					var label = new Label();
+					label.text = "Nova Converters";
+					var spacer = new Spacer();
 					var cneLink = new Link();
 					cneLink.text = "Codename Engine";
 					cneLink.id = "splashImportChartCodename";
@@ -106,6 +114,13 @@ class ChartEditor extends Module {
 						}
 						state.add(daDialog);
 					}
+					i.findComponent("splashImportChartLegacy").parentComponent.addComponent(spacer);
+					i.findComponent("splashImportChartLegacy").parentComponent.addComponent(spacer);
+					i.findComponent("splashImportChartLegacy").parentComponent.addComponent(label);
+
+					var line = RuntimeComponentBuilder.build(Paths.ui("line"));
+					i.findComponent("splashImportChartLegacy").parentComponent.addComponent(line);
+
 					i.findComponent("splashImportChartLegacy").parentComponent.addComponent(cneLink);
 				}
 			}
@@ -200,6 +215,14 @@ class ChartEditor extends Module {
 
 		songID = parsed.name;
 
+		if (songID == null) {
+			var pathSplit = data.fullPath.split("\\");
+			pathSplit.pop();
+			songID = pathSplit.pop();
+		}
+
+		songID = songID.toLowerCase();
+
 		// Handle MetaData
 		songMeta = new SongMetadata();
 		songMeta.playData.difficulties = parsed.difficulties;
@@ -216,7 +239,6 @@ class ChartEditor extends Module {
 			if (parsed.customValues.charter != null)
 				songMeta.charter = parsed.customValues.charter;
 		}
-
 		songMeta.artist = songMeta.artist == null ? "Unknown" : songMeta.artist;
 		songMeta.charter = songMeta.charter == null ? "Unknown" : songMeta.charter;
 
@@ -240,7 +262,43 @@ class ChartEditor extends Module {
 
 		songChart = new SongChartData(scrollSpeeds, [], notes);
 
+		openEventsDialogue();
+	}
+
+	function onSelectCNEEvents(data) {
+		var parsed = Json.parse(data.text);
+		songChart.events = convertCNEEvents(parsed);
 		openDifficultyDialogue();
+	}
+
+	function openEventsDialogue() {
+		var daDialog = RuntimeComponentBuilder.build(Paths.ui("dialogs/cne/upload-events"));
+		daDialog.zIndex = 1000;
+		daDialog.showDialog(true);
+		daDialog.destroyOnClose = true;
+
+		daDialog.findComponent("chartBox").onClick = function(_event) {
+			FileUtil.browseForTextFile('Open Events', [FileUtil.FILE_FILTER_JSON], (data)->{ daDialog.hide(); onSelectCNEEvents(data); }, ()->{});
+		}
+
+		daDialog.findComponent("chartBox").onMouseOver = function(_event) {
+			daDialog.findComponent("chartBox").alpha = 1;
+			Cursor.cursorMode = CursorMode.Pointer;
+		}
+
+		daDialog.findComponent("chartBox").onMouseOut = function(_event) {
+			daDialog.findComponent("chartBox").alpha = 0.8;
+			Cursor.cursorMode = CursorMode.Default;
+		}
+		daDialog.findComponent("chartBox").alpha = 0.8;
+		//FlxG.state.isHaxeUIDialogOpen = true;
+		daDialog.onDialogClosed = function(event:UIEvent) {
+			//FlxG.state.isHaxeUIDialogOpen = false;
+		};
+		daDialog.findComponent("dialogCancel").onClick = ()->{
+			daDialog.hide();
+		}
+		FlxG.state.add(daDialog);
 	}
 
 	var chartString = "";
@@ -281,16 +339,8 @@ class ChartEditor extends Module {
 
 		
 		if (currentDifficulty == 0) {
-			var events = [];
-			
-			if (parsed.events != null) {
-				for (event in parsed.events) {
-					var daEvent = new SongEventDataRaw(event.time, aliasEvent(event.name), eventParams(event.name, event.params));
-					events.push(daEvent);
-				}
-			}
-
-			songChart.events = events;
+			if (songChart.events == null) songChart.events = []; 
+			songChart.events = songChart.events.concat(convertCNEEvents(parsed));
 			songMeta.playData.stage = parsed.stage != null ? parsed.stage : "mainStage";
 		}
 		
@@ -315,7 +365,7 @@ class ChartEditor extends Module {
 
 		var state:ChartEditorState = FlxG.state;
 
-		var daDialog = RuntimeComponentBuilder.build(Paths.ui("dialogs/cne/upload-vocals"));//meta"));
+		var daDialog = RuntimeComponentBuilder.build(Paths.ui("dialogs/cne/upload-vocals"));
 		daDialog.zIndex = 1000;
 		daDialog.showDialog(true);
 		daDialog.destroyOnClose = true;
@@ -420,8 +470,16 @@ class ChartEditor extends Module {
 		var songMetaString = songMeta.serialize();
 		//var songChartString = songChart.serialize();
 
-		FileUtil.writeStringToPath(jsonPath + "chart.json", chartString);
-		FileUtil.writeStringToPath(jsonPath + "metadata.json", songMetaString);
+		var outputChartData = Json.parse(chartString);
+		outputChartData.version = "2.0.0"; // Not setting these breaks the song for some reason, love to see it
+		var outputMetaData = Json.parse(songMetaString);
+		outputMetaData.version = "2.2.4";
+		outputMetaData.artist ??= "Unknown";
+		outputMetaData.charter ??= "Unknown";
+		outputMetaData.generatedBy = "Nova Chart Converters - v1.0.1";
+
+		FileUtil.writeStringToPath(jsonPath + "chart.json", Json.stringify(outputChartData, null, "\t"));
+		FileUtil.writeStringToPath(jsonPath + "metadata.json", Json.stringify(outputMetaData, null, "\t"));
 		
 
 		return true;
@@ -452,8 +510,8 @@ class ChartEditor extends Module {
 		daDialog.findComponent("dialogContinue").onClick = ()->{
 			newNotification("Processing Chart.", "Processing Chart, Please Wait.", NotificationType.Info);
 			for (i in PolymodHandler.getAllMods()) {
-				if (i.title + " (" + i.id + ")" == dropDown.text) {
-					var success = processData(i.id);
+				if (i.title + " (" + i.dirName + ")" == dropDown.text) {
+					var success = processData(i.dirName);
 					if (success) {
 						newNotification("Chart Converted!!", "Your chart has converted, please Hot Reload or Restart the game to access the chart in-game.", NotificationType.Success);
 					} else {
@@ -465,7 +523,7 @@ class ChartEditor extends Module {
 		}
 
 		for (i in PolymodHandler.getAllMods()) {
-			daDialog.findComponent("modFolderList").dataSource.add({ text: i.title + " (" + i.id + ")" });
+			daDialog.findComponent("modFolderList").dataSource.add({ text: i.title + " (" + i.dirName + ")" });
             /* if (i.title == editorTitle) {
                 editorFolder = i.id;
             } */
@@ -482,12 +540,34 @@ class ChartEditor extends Module {
 		dropDown = daDialog.findComponent("modFolderList");
 	}
 
+	function convertCNEEvents(parsed) {
+		var events = [];
+			
+		if (parsed.events != null) {
+			for (event in parsed.events) {
+				if (event.name != "Camera Movement") trace(event.name);
+				if (event.name == "BPM Change") {
+					songMeta.timeChanges.push(new SongTimeChange(event.time, event.params[0]));
+				} else if (event.name == "Continuous BPM Change") {
+					songMeta.timeChanges.push(new SongTimeChange(event.time, event.params[0], null, null, event.params[1] / songMeta.timeChanges[0].timeSignatureDen));
+				} else {
+					var daEvent = new SongEventDataRaw(event.time, aliasEvent(event.name), eventParams(event.name, event.params));
+					events.push(daEvent);
+				}
+			}
+		}
+		return events;
+	}
+
 	function aliasEvent(eventName:String) {
 		var aliases = [
 			"Camera Movement" => "FocusCamera",
+			"Camera Position" => "FocusCamera",
 			"Play Animation" => "PlayAnimation",
 			"Change Character" => "ChangeCharacter",
-			"HScript Call" => "HScriptCall"
+			"Camera Modulo Change" => "SetCameraBop",
+			"Camera Zoom" => "ZoomCamera",
+			"Scroll Speed Change" => "ScrollSpeed"
 		];
 		for (i in aliases.keys()) {
 			eventName = StringTools.replace(eventName, i, aliases.get(i));
@@ -496,7 +576,34 @@ class ChartEditor extends Module {
 	}
 
 	function eventParams(eventName:String, params:Array) {
-		return [
+		var params2 = [
+			"Camera Modulo Change" => {
+				rate: params[2] == "BEAT" ? params[0] : params[0] / songMeta.timeChanges[0].timeSignatureDen,
+				intensity: params[1],
+				offset: params[3]
+			},
+			"Camera Position" => {
+				char: -1,
+				x: params[0],
+				y: params[1],
+				duration: params[3],
+				ease: params[2] ? 'INSTANT' : params[4],
+				easeDir: params[5]
+			},
+			"Camera Zoom" => {
+				zoom: params[1],
+				duration: params[3],
+				ease: params[0] ? 'INSTANT' : params[4],
+				easeDir: params[5],
+				mode: params[6]
+			},
+			"Scroll Speed Change" => {
+				scroll: params[1],
+				duration: params[2],
+				ease: params[0] ? 'INSTANT' : params[3],
+				easeDir: params[4],
+				absolute: !params[5]
+			},
 			"Camera Movement" => {
 					char: params[0] == 0 ? 1 : params[0] == 1 ? 0 : params[0]
 			},
@@ -514,5 +621,9 @@ class ChartEditor extends Module {
 				params: params[1]
 			}
 		].get(eventName);
+		if (params2 == null) {
+			params2 = params;
+		}
+		return params2;
 	}
 }

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<dialog id="chartDialog" width="600" height="400" title="From Codename Engine - Upload Events">
+	<vbox width="100%" height="100%">
+		<box width="100%" id="chartBox" height="100%" styleName="upload-bg" style="border: 2px dotted #DDDDDD; padding: 5px;">
+			<label width="100%" style="font-size: 24px" verticalAlign="center" horizontalAlign="center" textAlign="center" text="Click here to browse for a Codename Engine Events file (.json)" />
+		</box>
+		<hbox>
+			<button text="Cancel" id="dialogCancel" />
+			<button text="Skip" id="dialogSkip"/>
+			<spacer width="200%" />
+		</hbox>
+	</vbox>
+</dialog>
